@@ -63,11 +63,11 @@ The final system produces:
 mystery-delivery-system/
 │
 ├── main.py                 # Main simulation logic
-├── data.json               # Input test data
+├── test_case_1.json               # Input test data
 ├── report.json             # Generated delivery report
 ├── top_performer.csv       # Best agent export
 ├── README.md               # Project documentation
-└── requirements.txt        # Project requirements
+
 ```
 
 ---
@@ -280,7 +280,7 @@ These delays **do not impact efficiency calculations**.
 ### Clone Repository
 
 ```bash
-git clone 
+git clone https://github.com/Prerna2411/Mystery-Delivery-System--Python-Developer-Assignment--Nexgensis-Technologies-Pvt.-Ltd.-.git
 ```
 
 ### Navigate to Project Folder
