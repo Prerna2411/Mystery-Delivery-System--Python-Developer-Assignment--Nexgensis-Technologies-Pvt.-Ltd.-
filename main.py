@@ -4,55 +4,84 @@ import random
 import csv
 
 
-# ---------------------------------------------------
-# Function to calculate Euclidean distance
-# ---------------------------------------------------
+# =====================================================
+# Function: Calculate Euclidean Distance
+# =====================================================
 def euclidean_distance(point1, point2):
+    """
+    Calculate Euclidean distance
+    between two coordinates.
+    """
     return math.sqrt(
         (point1[0] - point2[0]) ** 2 +
         (point1[1] - point2[1]) ** 2
     )
 
 
-# ---------------------------------------------------
-# Load JSON data manually
-# ---------------------------------------------------
-with open("test_case_1.json", "r") as file:
-    data = json.load(file)
+# =====================================================
+# BONUS: ASCII Route Visualization
+# =====================================================
+def visualize_route(
+    agent_id,
+    agent_location,
+    warehouse_id,
+    warehouse_location,
+    destination
+):
+    """
+    Visualize delivery route in ASCII.
+    """
 
-warehouses = data["warehouses"]
-agents = data["agents"]
-packages = data["packages"]
+    print("\nASCII ROUTE VISUALIZATION")
+    print("-" * 40)
+
+    print(
+        f"{agent_id} "
+        f"{agent_location}"
+    )
+
+    print("      |")
+    print("      v")
+
+    print(
+        f"{warehouse_id} "
+        f"{warehouse_location}"
+    )
+
+    print("      |")
+    print("      v")
+
+    print(
+        f"Destination "
+        f"{destination}"
+    )
+
+    print("-" * 40)
 
 
-# ---------------------------------------------------
-# Store delivery information
-# ---------------------------------------------------
-report = {}
+# =====================================================
+# Function: Find Nearest Agent
+# =====================================================
+def find_nearest_agent(
+    warehouse_location,
+    agents
+):
+    """
+    Find nearest agent
+    using Euclidean distance.
 
-
-for agent_id in agents.keys():
-    report[agent_id] = {
-        "packages_delivered": 0,
-        "total_distance": 0,
-        "efficiency": 0
-    }
-
-
-# ---------------------------------------------------
-# Package assignment to nearest agent
-# ---------------------------------------------------
-assignments = {}
-
-for package in packages:
-    warehouse_id = package["warehouse"]
-    warehouse_location = warehouses[warehouse_id]
+    Tie-breaking:
+    lexicographically smaller
+    agent ID wins.
+    """
 
     nearest_agent = None
     minimum_distance = float("inf")
 
-    # Find nearest agent to warehouse
-    for agent_id, agent_location in agents.items():
+    for (
+        agent_id,
+        agent_location
+    ) in agents.items():
 
         distance = euclidean_distance(
             agent_location,
@@ -63,108 +92,393 @@ for package in packages:
             minimum_distance = distance
             nearest_agent = agent_id
 
-    assignments[package["id"]] = nearest_agent
+        elif distance == minimum_distance:
+            nearest_agent = min(
+                nearest_agent,
+                agent_id
+            )
+
+    return nearest_agent
 
 
-# ---------------------------------------------------
-# Delivery simulation
-# ---------------------------------------------------
-print("\n========= DELIVERY SIMULATION =========\n")
+# =====================================================
+# Load and Parse JSON File Manually
+# =====================================================
+try:
+    with open(
+        "test_case_1.json",
+        "r"
+    ) as file:
 
-for package in packages:
+        json_content = file.read()
 
-    package_id = package["id"]
-    warehouse_id = package["warehouse"]
-
-    warehouse_location = warehouses[warehouse_id]
-    destination = package["destination"]
-
-    assigned_agent = assignments[package_id]
-    agent_location = agents[assigned_agent]
-
-    # Distance from agent to warehouse
-    distance_to_warehouse = euclidean_distance(
-        agent_location,
-        warehouse_location
+    data = json.loads(
+        json_content
     )
 
-    # Distance warehouse to destination
-    delivery_distance = euclidean_distance(
+except FileNotFoundError:
+    print(
+        "Error: JSON file not found."
+    )
+    exit()
+
+except json.JSONDecodeError:
+    print(
+        "Error: Invalid JSON format."
+    )
+    exit()
+
+
+# =====================================================
+# Extract Data
+# =====================================================
+warehouses = data.get(
+    "warehouses",
+    {}
+)
+
+agents = data.get(
+    "agents",
+    {}
+)
+
+packages = data.get(
+    "packages",
+    []
+)
+
+
+# =====================================================
+# Initialize Report
+# =====================================================
+report = {}
+
+for agent_id in agents:
+
+    report[agent_id] = {
+        "packages_delivered": 0,
+        "total_distance": 0,
+        "efficiency": 0
+    }
+
+
+# =====================================================
+# Dynamic Agent Joining Setup
+# =====================================================
+new_agent_added = False
+
+mid_point = len(
+    packages
+) // 2
+
+
+# =====================================================
+# Delivery Simulation
+# =====================================================
+print(
+    "\n========== DELIVERY SIMULATION ==========\n"
+)
+
+"""
+ASSUMPTION:
+Each package delivery
+is treated as an
+independent trip.
+
+Agent starts from
+original location
+for every package.
+"""
+
+for index, package in enumerate(
+    packages
+):
+
+    # ==========================================
+    # BONUS:
+    # Dynamic Agent Joining
+    # ==========================================
+    if (
+        not new_agent_added
+        and index == mid_point
+    ):
+
+        print(
+            "\nNEW AGENT JOINED MID-DAY!"
+        )
+
+        print(
+            "Agent A5 joined "
+            "at [50, 50]\n"
+        )
+
+        agents["A5"] = [
+            50,
+            50
+        ]
+
+        report["A5"] = {
+            "packages_delivered": 0,
+            "total_distance": 0,
+            "efficiency": 0
+        }
+
+        new_agent_added = True
+
+    package_id = package["id"]
+
+    warehouse_id = package[
+        "warehouse"
+    ]
+
+    warehouse_location = (
+        warehouses[
+            warehouse_id
+        ]
+    )
+
+    destination = package[
+        "destination"
+    ]
+
+    # ==========================================
+    # Dynamic nearest agent assignment
+    # ==========================================
+    assigned_agent = (
+        find_nearest_agent(
+            warehouse_location,
+            agents
+        )
+    )
+
+    agent_location = agents[
+        assigned_agent
+    ]
+
+    # ==========================================
+    # Distance Calculation
+    # ==========================================
+    distance_to_warehouse = (
+        euclidean_distance(
+            agent_location,
+            warehouse_location
+        )
+    )
+
+    delivery_distance = (
+        euclidean_distance(
+            warehouse_location,
+            destination
+        )
+    )
+
+    total_trip_distance = (
+        distance_to_warehouse
+        + delivery_distance
+    )
+
+    # ==========================================
+    # BONUS:
+    # Random delivery delay
+    # ==========================================
+    delay_minutes = (
+        random.randint(
+            0,
+            15
+        )
+    )
+
+    # ==========================================
+    # Update Report
+    # ==========================================
+    report[
+        assigned_agent
+    ][
+        "packages_delivered"
+    ] += 1
+
+    report[
+        assigned_agent
+    ][
+        "total_distance"
+    ] += (
+        total_trip_distance
+    )
+
+    # ==========================================
+    # Print Simulation Details
+    # ==========================================
+    print(
+        f"Package ID       : "
+        f"{package_id}"
+    )
+
+    print(
+        f"Assigned Agent   : "
+        f"{assigned_agent}"
+    )
+
+    print(
+        f"Warehouse        : "
+        f"{warehouse_id}"
+    )
+
+    print(
+        f"Distance Travelled: "
+        f"{total_trip_distance:.2f}"
+    )
+
+    print(
+        f"Delivery Delay   : "
+        f"{delay_minutes} mins"
+    )
+
+    # ==========================================
+    # BONUS:
+    # ASCII Route Visualization
+    # ==========================================
+    visualize_route(
+        assigned_agent,
+        agent_location,
+        warehouse_id,
         warehouse_location,
         destination
     )
 
-    total_trip_distance = (
-        distance_to_warehouse +
-        delivery_distance
-    )
 
-    # BONUS: Random delivery delay
-    delay_minutes = random.randint(0, 15)
-
-    # Update report
-    report[assigned_agent]["packages_delivered"] += 1
-    report[assigned_agent]["total_distance"] += (
-        total_trip_distance
-    )
-
-    print(f"Package {package_id}")
-    print(f"Assigned Agent: {assigned_agent}")
-    print(f"Warehouse: {warehouse_id}")
-    print(f"Distance Travelled: "
-          f"{total_trip_distance:.2f}")
-    print(f"Delay: {delay_minutes} mins")
-    print("-" * 40)
-
-
-# ---------------------------------------------------
-# Calculate efficiency
-# Efficiency = total_distance / packages
-# lower = better
-# ---------------------------------------------------
+# =====================================================
+# Calculate Efficiency
+# =====================================================
 best_agent = None
-best_efficiency = float("inf")
+best_efficiency = (
+    float("inf")
+)
 
 for agent_id in report:
 
-    delivered = report[agent_id]["packages_delivered"]
-    total_distance = report[agent_id]["total_distance"]
+    delivered = report[
+        agent_id
+    ][
+        "packages_delivered"
+    ]
+
+    total_distance = report[
+        agent_id
+    ][
+        "total_distance"
+    ]
 
     if delivered > 0:
-        efficiency = total_distance / delivered
+
+        efficiency = (
+            total_distance
+            / delivered
+        )
+
     else:
         efficiency = 0
 
-    report[agent_id]["total_distance"] = round(
-        total_distance, 2
+    report[
+        agent_id
+    ][
+        "total_distance"
+    ] = round(
+        total_distance,
+        2
     )
 
-    report[agent_id]["efficiency"] = round(
-        efficiency, 2
+    report[
+        agent_id
+    ][
+        "efficiency"
+    ] = round(
+        efficiency,
+        2
     )
 
-    # Best agent = lowest efficiency
-    if delivered > 0 and efficiency < best_efficiency:
-        best_efficiency = efficiency
-        best_agent = agent_id
+    if (
+        delivered > 0
+        and efficiency
+        < best_efficiency
+    ):
+
+        best_efficiency = (
+            efficiency
+        )
+
+        best_agent = (
+            agent_id
+        )
 
 
-# Add best agent to report
-report["best_agent"] = best_agent
+report[
+    "best_agent"
+] = best_agent
 
 
-# ---------------------------------------------------
-# Save report to JSON
-# ---------------------------------------------------
-with open("report.json", "w") as file:
-    json.dump(report, file, indent=4)
+# =====================================================
+# Validate Package Count
+# =====================================================
+total_delivered = sum(
+    report[agent][
+        "packages_delivered"
+    ]
+    for agent in report
+    if isinstance(
+        report[agent],
+        dict
+    )
+)
+
+if (
+    total_delivered
+    != len(packages)
+):
+
+    print(
+        "\nWARNING: "
+        "Package count mismatch!"
+    )
+
+else:
+    print(
+        "\nAll packages "
+        "delivered successfully."
+    )
 
 
-# ---------------------------------------------------
-# BONUS: Export best performer to CSV
-# ---------------------------------------------------
-with open("top_performer.csv", "w", newline="") as file:
-    writer = csv.writer(file)
+# =====================================================
+# Save JSON Report
+# =====================================================
+with open(
+    "report.json",
+    "w"
+) as file:
+
+    json.dump(
+        report,
+        file,
+        indent=4
+    )
+
+print(
+    "\nreport.json generated."
+)
+
+
+# =====================================================
+# BONUS:
+# Export Best Performer
+# =====================================================
+with open(
+    "top_performer.csv",
+    "w",
+    newline=""
+) as file:
+
+    writer = csv.writer(
+        file
+    )
 
     writer.writerow([
         "Best Agent",
@@ -175,18 +489,39 @@ with open("top_performer.csv", "w", newline="") as file:
 
     writer.writerow([
         best_agent,
-        report[best_agent]["packages_delivered"],
-        report[best_agent]["total_distance"],
-        report[best_agent]["efficiency"]
+        report[
+            best_agent
+        ][
+            "packages_delivered"
+        ],
+        report[
+            best_agent
+        ][
+            "total_distance"
+        ],
+        report[
+            best_agent
+        ][
+            "efficiency"
+        ]
     ])
 
+print(
+    "top_performer.csv "
+    "generated."
+)
 
-# ---------------------------------------------------
+
+# =====================================================
 # Final Report
-# ---------------------------------------------------
-print("\n========= FINAL REPORT =========\n")
+# =====================================================
+print(
+    "\n========== FINAL REPORT ==========\n"
+)
 
-print(json.dumps(report, indent=4))
-
-print("\nReport saved to report.json")
-print("Top performer saved to top_performer.csv")
+print(
+    json.dumps(
+        report,
+        indent=4
+    )
+)
